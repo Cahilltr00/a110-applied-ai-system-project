@@ -34,11 +34,19 @@ def _start_new_game(cat: str):
     st.session_state.last_category = cat
 
 if "questions" not in st.session_state:
+    if "total_score" not in st.session_state:
+        st.session_state.total_score = 0
     _start_new_game(category)
 
 # Restart if category changed
 if st.session_state.get("last_category") != category:
     _start_new_game(category)
+
+# --- Sidebar score + controls ---
+st.sidebar.metric("Total Score", st.session_state.get("total_score", 0))
+if st.sidebar.button("Reset Total Score"):
+    st.session_state.total_score = 0
+    st.rerun()
 
 # --- New Game button ---
 if st.sidebar.button("New Game 🔁"):
@@ -50,7 +58,14 @@ if st.session_state.status == "done":
     total = get_num_questions()
     score = st.session_state.score
     max_score = total * 10
+    st.session_state.total_score += score
+    st.session_state.status = "results"
+
+if st.session_state.status == "results":
+    score = st.session_state.score
+    max_score = get_num_questions() * 10
     st.success(f"Game over! You scored **{score} / {max_score}**.")
+    st.info(f"Total score across all games: **{st.session_state.total_score}**")
     if score == max_score:
         st.balloons()
         st.info("Perfect score! You're a trivia star! 🌟")
@@ -103,4 +118,4 @@ if st.button("Submit Answer 🚀"):
 
 # --- Score display ---
 st.divider()
-st.caption(f"Score: {st.session_state.score} | Category: {category}")
+st.caption(f"Game score: {st.session_state.score} | Total score: {st.session_state.total_score} | Category: {category}")
