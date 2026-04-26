@@ -79,3 +79,7 @@ All 22 tests passed however, the feedback that Claude will give when it receives
 
 # Loom Video Walkthrough:
 https://www.loom.com/share/9f0495d3d0f04c4f96a6932313b0cc75
+
+
+# GitHub Link:
+https://github.com/Cahilltr00/a110-applied-ai-system-project
