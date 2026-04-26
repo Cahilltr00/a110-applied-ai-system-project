@@ -1,131 +1,106 @@
-import random
 import streamlit as st
-from logic_utils import get_range_for_difficulty, parse_guess, check_guess, update_score
+from dotenv import load_dotenv
+from logic_utils import get_num_questions, update_score
+from rag_utils import get_collection, retrieve_questions, grade_answer
 
-st.set_page_config(page_title="Glitchy Guesser", page_icon="🎮")
+load_dotenv()
 
-st.title("🎮 Game Glitch Investigator")
-st.caption("An AI-generated guessing game. Something is off.")
+st.set_page_config(page_title="Trivia Time!", page_icon="🎓")
+st.title("🎓 Kindergarten Trivia")
+st.caption("Answer questions retrieved from our knowledge base!")
 
+# --- Sidebar ---
 st.sidebar.header("Settings")
-
-difficulty = st.sidebar.selectbox(
-    "Difficulty",
-    ["Easy", "Normal", "Hard"],
-    index=1,
+category = st.sidebar.selectbox(
+    "Pick a category",
+    ["Animals", "Colors", "Shapes", "Numbers"],
 )
+st.sidebar.caption(f"Questions per game: {get_num_questions()}")
 
-attempt_limit_map = {
-    "Easy": 6,
-    "Normal": 8,
-    "Hard": 5,
-}
-attempt_limit = attempt_limit_map[difficulty]
+# --- Load ChromaDB collection once ---
+@st.cache_resource
+def load_collection():
+    return get_collection()
 
-low, high = get_range_for_difficulty(difficulty)
+collection = load_collection()
 
-st.sidebar.caption(f"Range: {low} to {high}")
-st.sidebar.caption(f"Attempts allowed: {attempt_limit}")
-
-if "secret" not in st.session_state:
-    st.session_state.secret = random.randint(low, high)
-
-if "attempts" not in st.session_state:
-    st.session_state.attempts = 1
-
-if "score" not in st.session_state:
-    st.session_state.score = 0
-
-if "status" not in st.session_state:
-    st.session_state.status = "playing"
-
-if "history" not in st.session_state:
-    st.session_state.history = []
-
-st.subheader("Make a guess")
-
-st.info(
-    f"Guess a number between 1 and 100. "
-    f"Attempts left: {attempt_limit - st.session_state.attempts}"
-)
-
-with st.expander("Developer Debug Info"):
-    st.write("Secret:", st.session_state.secret)
-    st.write("Attempts:", st.session_state.attempts)
-    st.write("Score:", st.session_state.score)
-    st.write("Difficulty:", difficulty)
-    st.write("History:", st.session_state.history)
-
-raw_guess = st.text_input(
-    "Enter your guess:",
-    key=f"guess_input_{difficulty}"
-)
-
-col1, col2, col3 = st.columns(3)
-with col1:
-    submit = st.button("Submit Guess 🚀")
-with col2:
-    new_game = st.button("New Game 🔁")
-with col3:
-    show_hint = st.checkbox("Show hint", value=True)
-
-if new_game:
-    st.session_state.attempts = 1
-    st.session_state.secret = random.randint(low, high)
+# --- Session state init ---
+def _start_new_game(cat: str):
+    st.session_state.questions = retrieve_questions(collection, cat, get_num_questions())
+    st.session_state.current_q = 0
     st.session_state.score = 0
     st.session_state.status = "playing"
-    st.session_state.history = []
+    st.session_state.feedback = None
+    st.session_state.last_category = cat
+
+if "questions" not in st.session_state:
+    _start_new_game(category)
+
+# Restart if category changed
+if st.session_state.get("last_category") != category:
+    _start_new_game(category)
+
+# --- New Game button ---
+if st.sidebar.button("New Game 🔁"):
+    _start_new_game(category)
     st.rerun()
 
-if st.session_state.status != "playing":
-    if st.session_state.status == "won":
-        st.success("You already won. Start a new game to play again.")
-    else:
-        st.error("Game over. Start a new game to try again.")
+# --- Game over screen ---
+if st.session_state.status == "done":
+    total = get_num_questions()
+    score = st.session_state.score
+    max_score = total * 10
+    st.success(f"Game over! You scored **{score} / {max_score}**.")
+    if score == max_score:
+        st.balloons()
+        st.info("Perfect score! You're a trivia star! 🌟")
+    if st.button("Play Again 🔁"):
+        _start_new_game(category)
+        st.rerun()
     st.stop()
 
-if submit:
-    st.session_state.attempts += 1
+# --- Current question ---
+questions = st.session_state.questions
+current_q = st.session_state.current_q
+q = questions[current_q]
 
-    ok, guess_int, err = parse_guess(raw_guess, low, high)
+st.progress((current_q) / get_num_questions(), text=f"Question {current_q + 1} of {get_num_questions()}")
+st.subheader(q["question"])
 
-    if not ok:
-        st.session_state.history.append(raw_guess)
-        st.error(err)
+# Show previous feedback
+if st.session_state.feedback:
+    is_correct, msg = st.session_state.feedback
+    if is_correct:
+        st.success(msg)
     else:
-        st.session_state.history.append(guess_int)
+        st.error(msg)
+    st.session_state.feedback = None
 
-        if st.session_state.attempts % 2 == 0:
-            secret = str(st.session_state.secret)
+# --- Answer input ---
+user_answer = st.text_input(
+    "Your answer:",
+    key=f"answer_{current_q}",
+    placeholder="Type your answer here...",
+)
+
+if st.button("Submit Answer 🚀"):
+    if not user_answer.strip():
+        st.warning("Please type an answer first!")
+    else:
+        with st.spinner("Checking your answer..."):
+            is_correct, feedback = grade_answer(q["question"], q["answer"], user_answer)
+
+        st.session_state.score = update_score(st.session_state.score, is_correct)
+        st.session_state.feedback = (is_correct, feedback)
+
+        next_q = current_q + 1
+        if next_q >= get_num_questions():
+            st.session_state.status = "done"
         else:
-            secret = st.session_state.secret
+            st.session_state.current_q = next_q
 
-        outcome, message = check_guess(guess_int, secret)
+        st.rerun()
 
-        if show_hint:
-            st.warning(message)
-
-        st.session_state.score = update_score(
-            current_score=st.session_state.score,
-            outcome=outcome,
-            attempt_number=st.session_state.attempts,
-        )
-
-        if outcome == "Win":
-            st.balloons()
-            st.session_state.status = "won"
-            st.success(
-                f"You won! The secret was {st.session_state.secret}. "
-                f"Final score: {st.session_state.score}"
-            )
-        else:
-            if st.session_state.attempts >= attempt_limit:
-                st.session_state.status = "lost"
-                st.error(
-                    f"Out of attempts! "
-                    f"The secret was {st.session_state.secret}. "
-                    f"Score: {st.session_state.score}"
-                )
-
+# --- Score display ---
 st.divider()
-st.caption("Built by an AI that claims this code is production-ready.")
+st.caption(f"Score: {st.session_state.score} | Category: {category}")
