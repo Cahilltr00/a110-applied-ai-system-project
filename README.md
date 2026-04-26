@@ -76,3 +76,6 @@ All 22 tests passed however, the feedback that Claude will give when it receives
 -> Reliability wise, it was interesting to see that even though Claude correctly identified "8" as a correct answer to "How many sides does a stop sign have?", it's feedback included a memory helper that would confuse a kindergarten level user. Reliabiltiy isn't just whether the AI gets the answer right, it's whether the output makes sense.
 
 -> The back and forth with AI was pretty awesome for this project, I had the original idea to change the number guessing game into a trivia game and AI set forth the possible steps of progression. It was also cool to receive tips and tricks to setting this small program up in a cost-effective way, such as using the mock testing functionality instead of making API calls consistently for testing.
+
+# Loom Video Walkthrough:
+https://www.loom.com/share/9f0495d3d0f04c4f96a6932313b0cc75
