@@ -1,4 +1,5 @@
 import os
+import random
 import chromadb
 import anthropic
 from knowledge_base import DOCS
@@ -26,12 +27,13 @@ def _ingest_docs(collection):
 
 def retrieve_questions(collection, category: str, n: int = 5) -> list[dict]:
     """
-    Retrieve n questions matching the given category.
-    Uses semantic search on the category string, then filters by metadata.
+    Retrieve n randomly sampled questions matching the given category.
+    Fetches all available docs for the category, then shuffles before returning.
     """
+    category_size = sum(1 for doc in DOCS if doc["category"] == category)
     results = collection.query(
         query_texts=[category],
-        n_results=min(n, len(DOCS)),
+        n_results=min(category_size, len(DOCS)),
         where={"category": category},
     )
     questions = []
@@ -42,6 +44,7 @@ def retrieve_questions(collection, category: str, n: int = 5) -> list[dict]:
             "answer": results["metadatas"][0][i]["answer"],
             "category": results["metadatas"][0][i]["category"],
         })
+    random.shuffle(questions)
     return questions[:n]
 
 
