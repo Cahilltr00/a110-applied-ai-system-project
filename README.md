@@ -24,20 +24,21 @@
 
 # Sample Interactions:
 
--> Question: What color is the sky on a sunny day?
+->
+Question: What color is the sky on a sunny day?
 User said: blue
 Correct: True
 Feedback: You're so smart for knowing that the sky is blue on a sunny day!
 
-      Question:  What sound does a dog make?
-      User said: woof
-      Correct:   True
-      Feedback:  A woof is the same as a bark, so you're right�great job!
+Question: What sound does a dog make?
+User said: woof
+Correct: True
+Feedback: A woof is the same as a bark, so you're right�great job!
 
-      Question:  How many sides does a triangle have?
-      User said: five
-      Correct:   False
-      Feedback:  A triangle has three sides, not five�maybe you were thinking of a different shape!
+Question: How many sides does a triangle have?
+User said: five
+Correct: False
+Feedback: A triangle has three sides, not five�maybe you were thinking of a different shape!
 
 # Design Decisions:
 
